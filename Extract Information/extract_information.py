@@ -1,0 +1,13 @@
+#Just a draft
+
+input_text = "Advieskantoor-Leeuwarden wordt gevraagd : Een BOVEN-Vooraf OUDERKAMER voor mensen zon: der Kinderen. Adres franco, onder letter G, aan J. BALT, Noorderweg , Leeuwarden TE HUUR: Een royaal INTREK, op 12 Mei e. k. te aanvaarden, op een der beste standen en in het midden der stad gelegen; benevens een KELDER , dadelijk te aan vaarden. Adres franco, onder letter Z, van J. BALT, Noorderweg ‚ Leeuwarden BAKKERIJ GEVRAAGD. Wordt gevraagd , uit de hand TE KOOP of TE BUUR: Een BAKKERIJ, op 12 Mei e. k., op een dorp in Friesland Adres franco, onder de letters K K, met opgaaf van prijs, aan J. BALT, Noorderweg , Leeuwarden 9 . P Dames! Oplegt Een JONG MENSCH P. G., V6 jaren oud, van woed uiterlijk en een fatsoenlijke en zelfstandige betrekking bekledende verlangt in kennis te komen met een fatsoenlijk , bij voorkeur gefortuneerd MEISJE , van ongeveer gelijken leeftijd ‚ om , na wederzijds goedvinden, een wettig huwelijk aan te gaan. Var geheimhouding kan men stellig verzekert zijn. Getekende brieven, liefst met bijvoeging van Portret, worden franco ingewacht, onder de letters A Z, bij J. BALT, aan den Noorderweg te Leeuwarden Brieven en Portret worden teruggezonden. Keukenmeid. Wordt tegen Mei gevraagd, op een groot Dorp: Een flinke KEUKENMEID, liefst een die gewoon is buiten te dienen. Het is een klein gezin, waar een tweede Meid voor binnen is. Het loon naar bekwaamheid en deugden Adres franco , onder letter O, bij J. BALT, Hoenderweg , Leeuwarden ene fatsoenlijke BURGER DOCHTER, oud Y 20 jaren, zoekt een betrekking als BINNENLEID of tot assistentie in een huishouding met of zonder Kinderen, kunnende goede getuigschriften overleggen. Brieven franco, onder de letters A K, aan J. BALT, Leeuwarden f 2000. Bovengemelde som wordt, liefst dadelijk , voor 3 jaren gevraagd tegen goede rente en solide borgtocht. Franco brieven, onder letter P, aan J. BALT , Noorderweg Leeuwarden Kleermakers, die op billijke voorwaarden grondig onderligt verlangen In de SNEDE , adresseren zich, met franco brieven, onder het motto „beter Kunst dan Geld” , aan J. BALT, Noorderweg , Leeuwarden . registratie Ten kantore van Registratie voor de Geestelijke Akten te Leeuwarden wordt verlangd een KLERK, die met de werkzaamheden niet onbekend is. Brieven franco "
+
+type = ""
+
+words = input_text.split(" ")
+if "bank" in words:
+    type = "instelling"
+
+for word in words:
+    if any(char in word for char in "0123456789"):
+        print(word)
