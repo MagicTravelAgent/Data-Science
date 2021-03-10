@@ -3,6 +3,8 @@ try:
 except ImportError:
     import Image
 import pytesseract as pt
+import re
+
 
 # in order to use tesseract we must install it
 # https://medium.com/quantrium-tech/installing-and-using-tesseract-4-on-windows-10-4f7930313f82
@@ -12,40 +14,37 @@ import pytesseract as pt
 # Example tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract'
 
 # Simple image to string
-#print(image_to_string(Image.open('test.jpg')))
+# txt = pt.image_to_string(Image.open('test.jpg'))
+# f = open("test_no_post.txt", "w")
+# f.write(txt)
+# f.close()
 
 # List of available languages
-print(pt.get_languages(config=''))
+# print(pt.get_languages(config=''))
 
 # Dutch text image to string
-txt = (pt.image_to_string(Image.open('test.jpg'), lang='nld'))
-f = open("test.txt", "w")
-f.write(txt)
+# txt = pt.image_to_string(Image.open('test.jpg'), lang='nld')
+# f = open("test_with_dutch_post.txt", "w")
+# f.write(txt)
+# f.close()
+
+#assuming that the text files exist we run the code to get the text out:
+f = open("test_with_dutch_post.txt", "r")
+text = f.read()
 f.close()
 
-# In order to bypass the image conversions of pytesseract, just use relative or absolute image path
-# NOTE: In this case you should provide tesseract supported images or tesseract will return error
-#print(image_to_string('test.jpg'))
+#now the text is open we split based on two empty lines of text:
+text = text.split("\n ")
+print(len(text))
 
-# Batch processing with a single file containing the list of multiple image file paths
-#print(image_to_string('images.txt'))
+#we check each split to see if it contains anything from the regular expression
+#so first we build the regular expression:
+reg = ".*hypothe+.*"
 
-# Get bounding box estimates
-#print(image_to_boxes(Image.open('test.jpg')))
-
-# Get verbose data including boxes, confidences, line and page numbers
-#print(image_to_data(Image.open('test.jpg')))
-
-# Get information about orientation and script detection
-#print(image_to_osd(Image.open('test.jpg')))
-
-# Get a searchable PDF
-# pdf = image_to_pdf_or_hocr('test.jpg', extension='pdf')
-# with open('test.pdf', 'w+b') as f:
-#     f.write(pdf) # pdf type is bytes by default
-
-# Get HOCR output
-# hocr = image_to_pdf_or_hocr('test.jpg', extension='hocr')
-
-# Get ALTO XML output
-# xml = image_to_alto_xml('test.jpg')
+for i in text:
+    x = re.search(reg, i)
+    if x:
+      print("YES! We have a match!")
+      print(i)
+    else:
+      print("No match")
