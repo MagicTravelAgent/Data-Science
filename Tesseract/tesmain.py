@@ -27,9 +27,9 @@ import csv
 # print(pt.get_languages(config=''))
 
 # Dutch text image to string
-# text = pt.image_to_string(Image.open('test.jpg'), lang='nld')
-# f = open("test_with_dutch_post.txt", "w")
-# f.write(text)
+# txt = pt.image_to_string(Image.open('test.jpg'), lang='nld')
+# with open("test_with_dutch_post.txt", "w", encoding="utf-8") as f:
+#     f.write(txt)
 # f.close()
 
 # Entire directory of dutch text images to strings
@@ -47,26 +47,30 @@ import csv
              #Help I have no idea how to solve it
 #            print(ex)
 
-#assuming that the text files exist we run the code to get the text out:
-f = open("test_with_dutch_post.txt", "r")
-text = f.read()
+# assuming that the text files exist we run the code to get the text out:
+with open("test_with_dutch_post.txt", "r", encoding="utf-8") as f:
+    text = f.read()
 f.close()
 
-#now the text is open we split based on two empty lines of text:
+# now the text is open we split based on two empty lines of text:
 text = text.split("\n ")
 print(len(text))
 
-#we check each split to see if it contains anything from the regular expression
-#so first we build the regular expression:
+# we check each split to see if it contains anything from the regular expression
+# so first we build the regular expression:
 reg = ".*hypothe+.*"
 
-for i in text:
-    x = re.search(reg, i)
-    if x:
-      print("YES! We have a match!")
-      print(i)
-    else:
-      print("No match")
+# create the text file for the output of the page:
+with open("advert_found.txt", "w", encoding="utf-8") as f:
+    # look through the different paragraphs and if our reg ex succeeds then we write it to the
+    # output text file
+    for i in text:
+        x = re.search(reg, i)
+        if x:
+          f.write(i)
+
+# close the output file
+f.close()
 
 # This was Astraea trying to detect ocr from 100 images, worked only for 2 of them so don't try this at home
 #text_directory = "###"
