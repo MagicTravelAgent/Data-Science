@@ -7,6 +7,8 @@ import re
 import io
 import glob
 import csv
+import improve_spelling as imp
+
 
 # from improve_spelling import improve_spelling
 
@@ -34,35 +36,34 @@ import csv
 # f.close()
 
 # Entire directory of dutch text images to strings
-image_directory = "..\Lucas Testing\Images"
-output_directory = "OCR"
-print("here")
-for image_filename in glob.glob(image_directory + "\*.jpeg"):
+def ocr_images():
+    image_directory = "..\Lucas Testing\Images"
+    output_directory = "OCR"
+    print("here")
+    for image_filename in glob.glob(image_directory + "\*.jpeg"):
 
-    try:
-        # ocr the file
-        text = pt.image_to_string(Image.open(image_filename), lang='nld')
+        try:
+            # ocr the file
+            text = pt.image_to_string(Image.open(image_filename), lang='nld')
 
-        # creating the file destination
-        f_dest = image_filename.replace(image_directory, output_directory)
-        f_dest = f_dest.replace(".jpeg", ".txt")
+            # creating the file destination
+            f_dest = image_filename.replace(image_directory, output_directory)
+            f_dest = f_dest.replace(".jpeg", ".txt")
 
-        #with the created destination write the text
-        with open(f_dest, "w", encoding="utf-8") as f:
-            f.write(text)
-            f.close()
+            # with the created destination write the text
+            with open(f_dest, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.close()
 
-    except Exception as ex:
-        print("its fucked")
-        # Astraea tested this with 100 images and 15 of them threw an error like this:
-        # (-11, 'Tesseract Open Source OCR Engine v4.0.0 with Leptonica Warning: Invalid resolution 0 dpi. Using 70 instead. Estimating resolution as 126 contains_unichar_id(unichar_id):Error:Assert failed:in file ../../src/ccutil/unicharset.h, line 502')
-        # Help I have no idea how to solve it
-        print(ex)
+        except Exception as ex:
+            print("its fucked on", image_filename)
+            # Astraea tested this with 100 images and 15 of them threw an error like this:
+            # (-11, 'Tesseract Open Source OCR Engine v4.0.0 with Leptonica Warning: Invalid resolution 0 dpi. Using 70 instead. Estimating resolution as 126 contains_unichar_id(unichar_id):Error:Assert failed:in file ../../src/ccutil/unicharset.h, line 502')
+            # Help I have no idea how to solve it
 
-# assuming that the text files exist we run the code to get the text out:
-# with open("test_with_dutch_post.txt", "r", encoding="utf-8") as f:
-#     text = f.read()
-# f.close()
+            # I think i solved it -Lucas
+            print(ex)
+
 
 # now the text is open we split based on two empty lines of text:
 # text = text.split("\n ")
@@ -85,73 +86,86 @@ for image_filename in glob.glob(image_directory + "\*.jpeg"):
 # f.close()
 
 # This was Astraea trying to detect ocr from 100 images, worked only for 2 of them so don't try this at home
-# text_directory = "###"
-# output_directory = "###"
-# output_file = open(output_directory + "img_ocr.csv","w")
-# csv_writer = csv.writer(output_file)
-# csv_writer.writerow(["ID_CVB2","ID_CVB","IDv2","ID","Titel","Dag","DAG","Maand","MAAND","Jaar","Type","Type_Detail","Soort Transactie","Vraag/Aanbod","Detail","Contact","Beroep","Locatie_Contact","Handelt namens","Advertentie_Opmerking","Bedragen","Bedrag_range_minimum","Bedrag_range_maximum","Reden","Onderpand","Locatie_Onderpand","Loan-to-value","Tegenpartij_Voorkeur","Aflossing","Rente","Moment","Hypotheek_Opmerking","URL","tblResultaatMetadatakey","OCR"])
-# filenames = glob.glob(text_directory + "*.txt")
-# filenames.sort()
-# for filename in filenames:
-#      print("Opening %s..." % (filename))
-#      f = open(filename, "r")
-#      #f = io.open("test_with_dutch_post.txt", "r", encoding="ISO-8859-15")
-#      text = f.read()
-#      f.close()
+text_directory = "OCR"
+output_directory = "Adverts"
+output_file = open(output_directory + "\img_ocr.csv", "w")
+csv_writer = csv.writer(output_file)
+csv_writer.writerow(
+    ["ID_CVB2", "ID_CVB", "IDv2", "ID", "Titel", "Dag", "DAG", "Maand", "MAAND", "Jaar", "Type", "Type_Detail",
+     "Soort Transactie", "Vraag/Aanbod", "Detail", "Contact", "Beroep", "Locatie_Contact", "Handelt namens",
+     "Advertentie_Opmerking", "Bedragen", "Bedrag_range_minimum", "Bedrag_range_maximum", "Reden", "Onderpand",
+     "Locatie_Onderpand", "Loan-to-value", "Tegenpartij_Voorkeur", "Aflossing", "Rente", "Moment",
+     "Hypotheek_Opmerking", "URL", "tblResultaatMetadatakey", "OCR"])
+filenames = glob.glob(text_directory + "\*.txt")
+filenames.sort()
+for filename in filenames:
+    print("Opening %s..." % (filename))
+    with open(filename, "r", encoding="utf-8") as f:
+        # f = io.open("test_with_dutch_post.txt", "r", encoding="ISO-8859-15")
+        text = f.read()
+        f.close()
 
-#      text = text.split("\n ")
-#      #print(len(text))
+    text = text.split("\n ")
+    print(len(text))
 
-#      reg = "^.*(" \
-#            "(?= 1e )(?= hypothe)|" \
-#            "(?= 1ste )(?= hypothe)|" \
-#            "(?= a[^ ]*ngebo[^ ]*den )(?= onderpa)|" \
-#            "(?= b[^ ]*sch[^ ]*kba[^ ]*r )(?= tegen )(?= rente)|" \
-#            "(?= bil[^ ]*k)(?= rente)|" \
-#            "(?= Bouwfonds)|" \
-#            "(?= eerste)(?= hypothe)|" \
-#            "(?= Eerste)(?= schepenke)|" \
-#            "(?= genoeg )(?= overwa[^ ]*rde)|" \
-#            "(?= gevr[^ ]*g)(?= onderpa)|" \
-#            "(?= gevr[^ ]*g)(?= tegen )(?= rente)|" \
-#            "(?= gez[^ ]*ht )(?= tegen )(?= rente)|" \
-#            "(?= gezocht )(?= onderpa)|" \
-#            "(?= grond[^ ]*red[^ ]*t)|" \
-#            "(?= hyp. )(?= verban)|" \
-#            "(?= hypoth)(?= b[^ ]*sch[^ ]*kba[^ ]*r )|" \
-#            "(?= hypothe[^ ]*b)|" \
-#            "(?= Hypothe[^ ]*r )(?= verban)|" \
-#            "(?= Ie )(?= hypothe)|" \
-#            "(?= Iste )(?= hypothe)|" \
-#            "(?= le )(?= hypothe)|" \
-#            "(?= leen )(?= onderpa)|" \
-#            "(?= leen )(?= tegen )(?= rente)|" \
-#            "(?= lste )(?= hypothe)|" \
-#            "(?= mak[^ ]*el[^ ]*r )(?= hypoth)|" \
-#            "(?= notaris )(?= hypothe)|" \
-#            "(?= onderpa)(?= aanwe[^ ]*ig )|" \
-#            "(?= onderpa)(?= overwa[^ ]*rde)|" \
-#            "(?= Pandbrie)|" \
-#            "(?= ru[^ ]*me)(?= overwa[^ ]*rde)|" \
-#            "(?= secuur )(?= onderpa)|" \
-#            "(?= soli[^ ]*d)(?= onderpa)|" \
-#            "(?= vold[^ ]*nde)(?= overwa[^ ]*rde)" \
-#            ").*$"
+    reg = ".*hypothe+.*"
+    # reg = "^.*(" \
+    #       "(?= 1e )(?= hypothe)|" \
+    #       "(?= 1ste )(?= hypothe)|" \
+    #       "(?= a[^ ]*ngebo[^ ]*den )(?= onderpa)|" \
+    #       "(?= b[^ ]*sch[^ ]*kba[^ ]*r )(?= tegen )(?= rente)|" \
+    #       "(?= bil[^ ]*k)(?= rente)|" \
+    #       "(?= Bouwfonds)|" \
+    #       "(?= eerste)(?= hypothe)|" \
+    #       "(?= Eerste)(?= schepenke)|" \
+    #       "(?= genoeg )(?= overwa[^ ]*rde)|" \
+    #       "(?= gevr[^ ]*g)(?= onderpa)|" \
+    #       "(?= gevr[^ ]*g)(?= tegen )(?= rente)|" \
+    #       "(?= gez[^ ]*ht )(?= tegen )(?= rente)|" \
+    #       "(?= gezocht )(?= onderpa)|" \
+    #       "(?= grond[^ ]*red[^ ]*t)|" \
+    #       "(?= hyp. )(?= verban)|" \
+    #       "(?= hypoth)(?= b[^ ]*sch[^ ]*kba[^ ]*r )|" \
+    #       "(?= hypothe[^ ]*b)|" \
+    #       "(?= Hypothe[^ ]*r )(?= verban)|" \
+    #       "(?= Ie )(?= hypothe)|" \
+    #       "(?= Iste )(?= hypothe)|" \
+    #       "(?= le )(?= hypothe)|" \
+    #       "(?= leen )(?= onderpa)|" \
+    #       "(?= leen )(?= tegen )(?= rente)|" \
+    #       "(?= lste )(?= hypothe)|" \
+    #       "(?= mak[^ ]*el[^ ]*r )(?= hypoth)|" \
+    #       "(?= notaris )(?= hypothe)|" \
+    #       "(?= onderpa)(?= aanwe[^ ]*ig )|" \
+    #       "(?= onderpa)(?= overwa[^ ]*rde)|" \
+    #       "(?= Pandbrie)|" \
+    #       "(?= ru[^ ]*me)(?= overwa[^ ]*rde)|" \
+    #       "(?= secuur )(?= onderpa)|" \
+    #       "(?= soli[^ ]*d)(?= onderpa)|" \
+    #       "(?= vold[^ ]*nde)(?= overwa[^ ]*rde)" \
+    #       ").*$"
 
-#      match = ""
-#      for i in text:
-#          x = re.search(reg, i.replace("\n"," "))
-#          if x:
-#                match += i
-#      if match == "":
-#            for i in text:
-#                  i = improve_spelling(i)
-#                  x = re.search(reg, i.replace("\n", " "))
-#                  if x:
-#                        print(i)
-#                        match += i
-#      else:
-#            match = improve_spelling(match)
-#            print(match)
-#      csv_writer.writerow(["","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",match])
-# output_file.close()
+    match = ""
+    for i in text:
+        # x = re.search(reg, i.replace("\n", " "))
+        x = re.search(reg, i)
+        if x:
+            match += i
+    if match == "":
+        print("match empty, improving spelling for better match?")
+        for i in text:
+            i = imp.improve_spelling(i)
+            # x = re.search(reg, i.replace("\n", " "))
+            x = re.search(reg, i)
+            if x:
+                print("match found in improved spelling")
+                match += i
+    else:
+        print("match not empty")
+        match = imp.improve_spelling(match)
+        print(match)
+
+    csv_writer.writerow(
+        ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+         "", "", "", "", "", "", match])
+output_file.close()
