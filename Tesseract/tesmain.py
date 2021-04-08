@@ -62,6 +62,8 @@ def ocr_images():
             # Help I have no idea how to solve it
 
             # I think i solved it -Lucas
+
+            # It's still giving me an error but perhaps it's just a problem with my version of Tesseract/my os -Astraea
             print(ex)
 
 
