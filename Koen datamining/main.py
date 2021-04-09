@@ -14,3 +14,5 @@ if __name__ == '__main__':
     print_hi('Hi Koen')
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
+import re
+
