@@ -10,10 +10,10 @@ import pandas as pd
 
 #If you want to use this script yourself, just edit these four variables and everything ought to work
 #Oh maybe make sure all of the above libraries are installed, as well as either the xlrd or the openpyxl module (which pandas depends on to read Excel files)
-path_to_excel_file = "###"
-image_download_path = "###"
-row_number_start = 2
-row_number_end = 102 #specific row numbers to enable Python not to download all 4000 links from the Excel file at once
+path_to_excel_file = r"C:\Users\koenv\OneDrive\Documenten\data science\SAMEN David en Lennart met OCR v2.xlsx"
+image_download_path = r"C:\bin\delpherdownloads"
+row_number_start = 103
+row_number_end = 104 #specific row numbers to enable Python not to download all 4000 links from the Excel file at once
 
 def is_valid(url):
     """
@@ -83,6 +83,6 @@ def main(starting_row,ending_row,path):
             imgs["%s" % (item[0])] = images[0]
     for item in imgs.items():
         # for each image, download it
-        download(item[1], path, "entry_%d.jpeg" % (int(item[0]) + 2))
+        download(item[1], path, "entry_%d.jpg" % (int(item[0]) + 2))
 
 main(row_number_start,row_number_end,image_download_path)
