@@ -39,7 +39,7 @@ import improve_spelling as imp
 def ocr_images():
     image_directory = "..\Lucas Testing\Images"
     output_directory = "OCR"
-    print("here")
+    #print("here")
     for image_filename in glob.glob(image_directory + "\*.jpeg"):
 
         try:
