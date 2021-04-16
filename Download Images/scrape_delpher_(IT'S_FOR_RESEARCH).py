@@ -125,9 +125,9 @@ def main(starting_row,ending_row,path):
     for item in imgs.items():
         # for each image, download it
         if download_cut_out_images:
-            download(item[1][0], path, "entry_%d_cut_out.jpeg" % (int(item[0]) + 2))
+            download(item[1][0], path, "entry_%d_cut_out.jpg" % (int(item[0]) + 2))
         if download_full_images:
-            download(item[1][1], path, "entry_%d_full.jpeg" % (int(item[0]) + 2))
+            download(item[1][1], path, "entry_%d_full.jpg" % (int(item[0]) + 2))
         create_accompanying_csv(imgs)
 
 main(row_number_start,row_number_end,image_download_path)
