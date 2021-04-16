@@ -7,13 +7,17 @@ from bs4 import BeautifulSoup as bs
 from urllib.parse import urljoin, urlparse
 import re
 import pandas as pd
+import csv
 
 #If you want to use this script yourself, just edit these four variables and everything ought to work
 #Oh maybe make sure all of the above libraries are installed, as well as either the xlrd or the openpyxl module (which pandas depends on to read Excel files)
-path_to_excel_file = r"C:\Users\koenv\OneDrive\Documenten\data science\SAMEN David en Lennart met OCR v2.xlsx"
-image_download_path = r"C:\bin\delpherdownloads"
-row_number_start = 103
-row_number_end = 104 #specific row numbers to enable Python not to download all 4000 links from the Excel file at once
+path_to_excel_file = "/home/astraea/Files/Programmeren/Python/Projects/Educatie/Delpher/Local/output/data_files/SAMEN_David_en_Lennart_met_OCR_v2.xlsx"
+image_download_path = "./Images/"
+metadata_download_path = "./Metadata/"
+row_number_start = 2
+row_number_end = 102 #specific row numbers to enable Python not to download all 4000 links from the Excel file at once
+download_full_images = True
+download_cut_out_images = True
 
 def is_valid(url):
     """
@@ -28,6 +32,18 @@ def get_all_images(url):
     """
     soup = bs(requests.get(url).content, "html.parser")
     urls = []
+    paper_name = ""
+    paper_date = ""
+
+    #Collect metadata from page
+    paper_names = [span.text.strip() for span in soup.find_all("span") if str(span.attrs.get("class")) != "None" and len(span.attrs.get("class")) > 0 and span.attrs.get("class")[0] == "object-view-top-block__heading-content"]
+    if len(paper_names) > 0:
+        paper_name = paper_names[0]
+    paper_dates = [li.text.strip() for li in soup.find_all("li") if str(li.attrs.get("class")) != "None" and len(li.attrs.get("class")) > 2 and li.attrs.get("class")[2] == "object-view-top-block__metadata-subtitle--date"]
+    if len(paper_dates) > 0:
+        paper_date = paper_dates[0]
+
+    #Collect images
     for img in tqdm(soup.find_all("img"), "Extracting images"):
         img_url = img.attrs.get("src")
         if not img_url:
@@ -35,13 +51,18 @@ def get_all_images(url):
             continue
         # make the URL absolute by joining domain with the URL that is just extracted
         img_url = urljoin(url, img_url)
+        #Collect metadata information from URL
+        keywords = re.sub(r"^.*words=([^&]+)&.*$", r"\1", img_url)
+        for pattern in [("%28", ""), ("%29", ""), ("%2A", "*")]:
+            keywords = re.sub("%s" % pattern[0], "%s" % pattern[1], keywords)
+        keywords = re.split("\+",keywords)
+        #Remove highlights
+        img_url_cut_out = re.sub("words=[^&]+&","",img_url)
         #Remove the 's', 'h', 'x' and 'y' attributes to obtain the full image instead of a cut out part
-        img_url = re.sub("&[shxy]=[^&]+","",img_url)
-        print(img_url)
+        img_url_full = re.sub("&[shxy]=[^&]+","",img_url_cut_out)
         # finally, if the url is valid
-        if is_valid(img_url):
-                urls.append(img_url)
-    print(urls)
+        if is_valid(img_url_cut_out) and is_valid(img_url_full):
+                urls.append([img_url_cut_out, img_url_full, keywords, paper_name, paper_date])
     return urls
 
 def download(url, pathname, filename):
@@ -73,6 +94,26 @@ def get_links_from_excel(start, end):
     urls = df["URL"].tolist()[start:end]
     return {"%d" % (start + index):urls[index] for index in range(len(urls))}
 
+def remove_leading_zeroes(number):
+    if len(number) > 1 and number[0] == "0":
+        return number[1:]
+    return number
+
+def split_date(date_string):
+    return (date_string[0:2],
+            remove_leading_zeroes(date_string[0:2]),
+            date_string[3:5],
+            remove_leading_zeroes(date_string[3:5]),
+            date_string[6:10])
+
+def create_accompanying_csv(imgs):
+    with open(metadata_download_path + "metadata.csv","w") as output_file:
+        csv_writer = csv.writer(output_file)
+        csv_writer.writerow(["Entry","Titel","Dag","DAG","Maand","MAAND","Jaar","URL_full","URL_cut_out","keywords"])
+        for img_data in imgs.items():
+            day, DAY, month, MONTH, year = split_date(img_data[1][4])
+            csv_writer.writerow([str(int(img_data[0]) + 2),img_data[1][3],day,DAY,month,MONTH,year,img_data[1][1],img_data[1][0],img_data[1][2]])
+
 def main(starting_row,ending_row,path):
     imgs = {}
     for item in get_links_from_excel(starting_row - 2,ending_row - 2).items():
@@ -83,6 +124,10 @@ def main(starting_row,ending_row,path):
             imgs["%s" % (item[0])] = images[0]
     for item in imgs.items():
         # for each image, download it
-        download(item[1], path, "entry_%d.jpg" % (int(item[0]) + 2))
+        if download_cut_out_images:
+            download(item[1][0], path, "entry_%d_cut_out.jpeg" % (int(item[0]) + 2))
+        if download_full_images:
+            download(item[1][1], path, "entry_%d_full.jpeg" % (int(item[0]) + 2))
+        create_accompanying_csv(imgs)
 
 main(row_number_start,row_number_end,image_download_path)
