@@ -249,11 +249,11 @@ def split_date(date_string):
             remove_leading_zeroes(date_string[3:5]),
             date_string[6:10])
 
-def create_accompanying_csv(imgs):
+def create_accompanying_csv(imgs, query_clean):
     """
     Write metadata to a file
     """
-    with open(metadata_download_path + "%s_metadata.csv" % query,"w") as output_file:
+    with open(metadata_download_path + "%s_metadata.csv" % query_clean,"w") as output_file:
         csv_writer = csv.writer(output_file)
         csv_writer.writerow(["Result ID","Titel","Dag","DAG","Maand","MAAND","Jaar","URL full","URL cut out","keywords"])
         for img_data in imgs.items():
@@ -277,15 +277,17 @@ def main():
         if info:
             #add url and metadata info to the image info list
             images_info["%d" % (index + 1)] = info
+    # create a version of the query without wildcards, because Windows does not like filenames with those characters in it
+    query_clean = re.sub("[.*]", "", query)
     for item in tqdm(images_info.items(),"Downloading images"):
         # for each image, download the versions that the user wants downloaded
         if download_cut_out_images:
-            download(item[1][0], image_download_path, "%s_result_%s_cut_out.jpeg" % (query, item[0]))
+            download(item[1][0], image_download_path, "%s_result_%s_cut_out.jpeg" % (query_clean, item[0]))
         if download_full_images:
-            download(item[1][1], image_download_path, "%s_result_%s_full.jpeg" % (query, item[0]))
+            download(item[1][1], image_download_path, "%s_result_%s_full.jpeg" % (query_clean, item[0]))
     if links:
         # Write the collected metadata to a csv file
-        create_accompanying_csv(images_info)
+        create_accompanying_csv(images_info,query_clean)
     print("Done!")
 
 if __name__ == '__main__':
