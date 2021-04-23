@@ -8,6 +8,7 @@ import io
 import glob
 import csv
 import improve_spelling as imp
+import time
 
 
 # from improve_spelling import improve_spelling
@@ -86,11 +87,10 @@ def ocr_images():
 
 # close the output file
 # f.close()
-ocr_images()
 
 def extract():
     # This was Astraea trying to detect ocr from 100 images, worked only for 2 of them so don't try this at home
-    text_directory = "OCR"
+    text_directory = "OCR2"
     output_directory = "Adverts"
     output_file = open(output_directory + "\img_ocr.csv", "w")
     csv_writer = csv.writer(output_file)
@@ -174,3 +174,149 @@ def extract():
              "", "", "", "", "", "", match])
     output_file.close()
 
+def reg_ex_test():
+    #for measuring time i take the time at the start
+    start_time = time.time()
+
+    text_directory = "Benchmark"
+    output_directory = "Benchmark"
+    output_file = open(output_directory + "\img_ocr_regex.csv", "w")
+    csv_writer = csv.writer(output_file)
+    csv_writer.writerow(
+        ["ID_CVB2", "ID_CVB", "IDv2", "ID", "Titel", "Dag", "DAG", "Maand", "MAAND", "Jaar", "Type", "Type_Detail",
+         "Soort Transactie", "Vraag/Aanbod", "Detail", "Contact", "Beroep", "Locatie_Contact", "Handelt namens",
+         "Advertentie_Opmerking", "Bedragen", "Bedrag_range_minimum", "Bedrag_range_maximum", "Reden", "Onderpand",
+         "Locatie_Onderpand", "Loan-to-value", "Tegenpartij_Voorkeur", "Aflossing", "Rente", "Moment",
+         "Hypotheek_Opmerking", "URL", "tblResultaatMetadatakey", "OCR"])
+    filenames = glob.glob(text_directory + "\*.txt")
+    filenames.sort()
+    for filename in filenames:
+        print("Opening %s..." % (filename))
+        with open(filename, "r", encoding="utf-8") as f:
+            # f = io.open("test_with_dutch_post.txt", "r", encoding="ISO-8859-15")
+            text = f.read()
+            f.close()
+
+        text = text.split("\n ")
+
+        reg = ".*hypothe+.*"
+        # reg = "^.*(" \
+        #       "(?= 1e )(?= hypothe)|" \
+        #       "(?= 1ste )(?= hypothe)|" \
+        #       "(?= a[^ ]*ngebo[^ ]*den )(?= onderpa)|" \
+        #       "(?= b[^ ]*sch[^ ]*kba[^ ]*r )(?= tegen )(?= rente)|" \
+        #       "(?= bil[^ ]*k)(?= rente)|" \
+        #       "(?= Bouwfonds)|" \
+        #       "(?= eerste)(?= hypothe)|" \
+        #       "(?= Eerste)(?= schepenke)|" \
+        #       "(?= genoeg )(?= overwa[^ ]*rde)|" \
+        #       "(?= gevr[^ ]*g)(?= onderpa)|" \
+        #       "(?= gevr[^ ]*g)(?= tegen )(?= rente)|" \
+        #       "(?= gez[^ ]*ht )(?= tegen )(?= rente)|" \
+        #       "(?= gezocht )(?= onderpa)|" \
+        #       "(?= grond[^ ]*red[^ ]*t)|" \
+        #       "(?= hyp. )(?= verban)|" \
+        #       "(?= hypoth)(?= b[^ ]*sch[^ ]*kba[^ ]*r )|" \
+        #       "(?= hypothe[^ ]*b)|" \
+        #       "(?= Hypothe[^ ]*r )(?= verban)|" \
+        #       "(?= Ie )(?= hypothe)|" \
+        #       "(?= Iste )(?= hypothe)|" \
+        #       "(?= le )(?= hypothe)|" \
+        #       "(?= leen )(?= onderpa)|" \
+        #       "(?= leen )(?= tegen )(?= rente)|" \
+        #       "(?= lste )(?= hypothe)|" \
+        #       "(?= mak[^ ]*el[^ ]*r )(?= hypoth)|" \
+        #       "(?= notaris )(?= hypothe)|" \
+        #       "(?= onderpa)(?= aanwe[^ ]*ig )|" \
+        #       "(?= onderpa)(?= overwa[^ ]*rde)|" \
+        #       "(?= Pandbrie)|" \
+        #       "(?= ru[^ ]*me)(?= overwa[^ ]*rde)|" \
+        #       "(?= secuur )(?= onderpa)|" \
+        #       "(?= soli[^ ]*d)(?= onderpa)|" \
+        #       "(?= vold[^ ]*nde)(?= overwa[^ ]*rde)" \
+        #       ").*$"
+        match = ""
+
+        for i in text:
+            # x = re.search(reg, i.replace("\n", " "))
+            x = re.search(reg, i)
+            if x:
+                match += i
+        if match == "":
+            #print("match empty, improving spelling for better match?")
+            for i in text:
+                i = imp.improve_spelling(i)
+                # x = re.search(reg, i.replace("\n", " "))
+                x = re.search(reg, i)
+                if x:
+                    #print("match found in improved spelling")
+                    match += i
+        else:
+            #print("match not empty")
+            match = imp.improve_spelling(match)
+            #print(match)
+
+        csv_writer.writerow(
+            ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+             "",
+             "", "", "", "", "", "", match])
+    output_file.close()
+
+    #end of regex search took x seconds
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+def contains_test():
+    #for measuring time i take the time at the start
+    start_time = time.time()
+    text_directory = "Benchmark"
+    output_directory = "Benchmark"
+    output_file = open(output_directory + "\img_ocr_contains.csv", "w")
+    csv_writer = csv.writer(output_file)
+    csv_writer.writerow(
+        ["ID_CVB2", "ID_CVB", "IDv2", "ID", "Titel", "Dag", "DAG", "Maand", "MAAND", "Jaar", "Type", "Type_Detail",
+         "Soort Transactie", "Vraag/Aanbod", "Detail", "Contact", "Beroep", "Locatie_Contact", "Handelt namens",
+         "Advertentie_Opmerking", "Bedragen", "Bedrag_range_minimum", "Bedrag_range_maximum", "Reden", "Onderpand",
+         "Locatie_Onderpand", "Loan-to-value", "Tegenpartij_Voorkeur", "Aflossing", "Rente", "Moment",
+         "Hypotheek_Opmerking", "URL", "tblResultaatMetadatakey", "OCR"])
+    filenames = glob.glob(text_directory + "\*.txt")
+    filenames.sort()
+    for filename in filenames:
+        print("Opening %s..." % (filename))
+        with open(filename, "r", encoding="utf-8") as f:
+            # f = io.open("test_with_dutch_post.txt", "r", encoding="ISO-8859-15")
+            text = f.read()
+            f.close()
+
+        text = text.split("\n ")
+        #print(len(text))
+        reg = "ypothe"
+        match = ""
+        for i in text:
+            x = reg in i
+            if x:
+                match += i
+        if match == "":
+            #print("match empty, improving spelling for better match?")
+            for i in text:
+                i = imp.improve_spelling(i)
+                # x = re.search(reg, i.replace("\n", " "))
+                x = reg in i
+                if x:
+                    #print("match found in improved spelling")
+                    match += i
+        else:
+            #print("match not empty")
+            match = imp.improve_spelling(match)
+            #print(match)
+
+        csv_writer.writerow(
+            ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+             "",
+             "", "", "", "", "", "", match])
+    output_file.close()
+
+    #end of contains search took x seconds
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+reg_ex_test()
+contains_test()
