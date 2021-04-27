@@ -4,8 +4,6 @@ import os
 import time
 import automata
 
-THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-
 
 # Define a function that restores punctuation and capital usage after a word has been replaced by a word from the spelling list
 def restore_caps_and_punctuation(new_word, original_word):
@@ -63,22 +61,23 @@ def determine_most_similar_word_new(preprocessed_word, original_word):
         lev_cand = lev(cand, preprocessed_word)
 
         if lev_cand < lev_repl:
-            freq = int(wordlist[cand])
+            freq = int(wordlist[cand]) if cand in wordlist else 0
             word_to_replace = cand
             lev_repl = lev_cand
-        elif int(wordlist[cand]) > freq and lev_cand == lev_repl:
+        elif lev_cand == lev_repl and cand in wordlist and int(wordlist[cand]) > freq:
             freq = int(wordlist[cand])
             word_to_replace = cand
             lev_repl = lev_cand
     return restore_caps_and_punctuation(word_to_replace, original_word)
 
 
-# Read (1) a list of correctly spelled words and (2) a list of word frequencies (based on CGN, a Corpus of Spoken Dutch)
-wordlist = {}
-with open(os.path.join(THIS_FOLDER, '../Extract_Information/wordlist.txt')) as wordlist_file:
-    for line in wordlist_file:
-        wordlist[line.strip().lower()] = 0
-with open(os.path.join(THIS_FOLDER, "../Extract_Information/word_frequencies.txt"), encoding="ISO-8859-1") as freq_file:
+# Read (1) a list of correctly spelled modern words, (2) a list of correctly spelled old words,
+# and (3) a list of word frequencies (based on CGN, a Corpus of Spoken Dutch)
+with open('wordlist.txt') as wordlist_file:
+    wordlist = {line.strip().lower():0 for line in wordlist_file}
+with open('wordlist_old.txt') as wordlist_file:
+    wordlist_old = [line.strip().lower() for line in wordlist_file]
+with open("word_frequencies.txt", encoding="ISO-8859-1") as freq_file:
     for line in freq_file:
         try:
             _, total, token = line.strip().split(maxsplit=2)
@@ -86,14 +85,11 @@ with open(os.path.join(THIS_FOLDER, "../Extract_Information/word_frequencies.txt
         except ValueError:
             pass
     wordlist.pop("token")
-raw_words = sorted(list(wordlist.keys()))
+raw_words = sorted(list(wordlist.keys()) + wordlist_old)
 
 
 # Compare words from the input_text to the word list and, if a word is not in the list, replace it by the closest word that is
 def improve_spelling(input_text, similarity_func=determine_most_similar_word_new):
-    # First off, combine words that have been cut off at the end of a line (indicated by a - sign)
-    input_text = re.sub("-( )+", "", input_text)
-
     # Split the text into parts and keep track of where the newlines are
     lines = list(input_text.partition("\n"))
     while lines[-2] != "":
@@ -109,28 +105,44 @@ def improve_spelling(input_text, similarity_func=determine_most_similar_word_new
         if words[index] == "\n":
             continue
 
-        # Don't bother with words consisting only of numbers
-        if all(char in "012345789" for char in words[index]):
+        # Check if the word is in the list of old/new correctly spelled words (before pre-processing)
+        # This will be done once before and once after pre-processing, because of issues with punctuation marks etc.
+        if words[index].lower() in wordlist or words[index].lower() in wordlist_old:
+            continue
+
+        # Skip acronyms (because not all of them are included in our wordlist)
+        # We consider a word an acronym if it ends in "." and the word that follows it does not start with a capital letter
+        if words[index].endswith(".") and index + 1 < len(words) and words[index + 1][0].islower():
             continue
 
         # Make lowercase and remove interpunction etc.
         word = re.sub("[^\w\d-]", "", words[index].lower())
 
-        # Check if word is already spelled correctly
-        if word not in wordlist.keys():
-            # If the word contains "-", correct the individual parts
-            # If the word does not contain "-", correct the entire word at once
-            if "-" in word[1:-1]:
-                compound_parts = re.split("-", word)
-                for i in range(len(compound_parts)):
-                    if compound_parts[i] not in wordlist.keys():
-                        compound_parts[i] = similarity_func(compound_parts[i],re.split("-", words[index])[i])
-                    else:
-                        compound_parts[i] = restore_caps_and_punctuation(compound_parts[i],
-                                                                         re.split("-", words[index])[i])
-                words[index] = '-'.join(compound_parts)
-            else:
-                words[index] = similarity_func(word, words[index])
+        # Skip words consisting only of numbers
+        if all(char in "0123456789/" for char in word):
+            continue
+
+        # Turn unicode ĳ into ij so the spell checker does not get confused
+        word = re.sub("ĳ","ij",word)
+
+        # Now that pre-processing is done, check again if the word is in the list of old/new correctly spelled words
+        if words[index] in wordlist or words[index] in wordlist_old:
+            continue
+
+        # It's not in the lists? Time for a correction
+        # If the word contains "-", correct the individual parts
+        # If the word does not contain "-", correct the entire word at once
+        if "-" in word[1:-1]:
+            compound_parts = re.split("-", word)
+            for i in range(len(compound_parts)):
+                if compound_parts[i] not in wordlist.keys():
+                    compound_parts[i] = similarity_func(compound_parts[i],re.split("-", words[index])[i])
+                else:
+                    compound_parts[i] = restore_caps_and_punctuation(compound_parts[i],
+                                                                        re.split("-", words[index])[i])
+            words[index] = '-'.join(compound_parts)
+        else:
+            words[index] = similarity_func(word, words[index])
 
     # Rebuild the list of word tokens back into a string
     output_text = ""
@@ -164,6 +176,7 @@ def _test_script(filename):
     time_elapsed = time.time() - starttime
     print("Took %d:%d:%d to correct the text using the new method, ending up with this corrected text:\n%s" % (_hours(time_elapsed), _minutes(time_elapsed), _seconds(time_elapsed), text_improved))
 
-#_test_script("./OCR/entry_3.txt")
-#Old method took 1 minute and 50 seconds on Astraeas pc
-#New method took 0 minutes and 18 seconds on Astraeas pc
+if __name__ == '__main__':
+    _test_script("./OCR2/entry_3_full.txt")
+#Old method took 1 minute and 50 seconds to read entry_3_full.txt on Astraeas pc
+#New method took 0 minutes and 18 seconds to read entry_3_full.txt on Astraeas pc
