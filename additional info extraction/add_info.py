@@ -16,7 +16,7 @@ import re
 writer = pd.ExcelWriter('demo.xlsx', engine='xlsxwriter')
 
 #list of cities in the Netherlands
-cities_dir=""
+cities_dir=r"C:\Users\koenv\OneDrive\Documenten\data science\Data-Science\additional info extraction\demo.xlsx"
 txt_cities = open(cities_dir, encoding="utf8")
 cities_list = txt_cities.read().strip()
 
@@ -34,9 +34,9 @@ k=0
 while k<200:
     try: 
         #open adverts
-        txt_file = open(r"\directory where you stored your files with this (so it can loop though files(k))->\entry_{}.txt".format(k), encoding="utf8")
+        txt_file = open(r"..\Tesseract\OCR2\entry_{}_cut_out.txt".format(k), encoding="utf8")
         text = txt_file.read().strip()
-        
+        print(text)
         #entry
         entry_.append(k)
        
@@ -96,5 +96,5 @@ print(cities)
 
 #save to the excel file
 update = pd.DataFrame({"entry_": entry_, 'vraag':vraag, 'aanbod': aanbod, 'company': company, "individual":individual, 'year':year, 'location':cities})   
-update.to_excel(r"\save it there-directiry.xlsx", index= False)
+update.to_excel(r"C:\Users\koenv\OneDrive\Documenten\data science\Data-Science\Koen datamining\trying olgas code on new ocr\directory.xlsx", index= False)
 
