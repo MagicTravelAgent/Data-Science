@@ -24,4 +24,4 @@ In this README an explanation is given for our file structure. <br/>
 ├── Lucas Testing                       <- Testing OCR (obsolete)<br/>
 ├── OCR Comparison                      <- Comparing the results from our OCR with Delpher's OCR (obsolete)   <br/>
 ├── Tesseract                           <- Early OCR attempts in the script 'tesmain.py' (obsolete)<br/>
-├── README.md <br/>
+└── README.md <br/>
