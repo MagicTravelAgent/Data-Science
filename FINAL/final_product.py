@@ -745,9 +745,6 @@ class Extractor:
 
         # now we have the order that the items are in the info extract we can attach the meta data to it
         # to do this we will read both the csv files into dataframes and then merge them
-
-        self.q_clean = "hypothe" #REMOVE ----------------------------------------------------------------------------------------------------------
-
         meta_file = pd.read_csv(self.metadata_download_path + "%s_metadata.csv" % self.q_clean, encoding="utf-8")
         info_file = pd.read_csv(self.final_directory + "img_ocr_data.csv", encoding="utf-8")
         info_file["ID"] = order
