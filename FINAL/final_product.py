@@ -16,6 +16,8 @@ import math
 from Levenshtein import distance as lev
 import os
 import automata
+import numpy as np
+import pandas as pd
 import time
 import io
 
@@ -39,7 +41,7 @@ class Extractor:
         self.advert_directory = "Adverts/"
 
         # Final output csv directory location defined
-        self.final_directory = ""
+        self.final_directory = "OCR/"
 
         # Download preferences
         self.download_full_images = False
@@ -47,6 +49,7 @@ class Extractor:
 
         # Customize query
         self.query = "hypothe*"
+        self.q_clean = ""
 
         # Customize year of appearance If all_years is True, there will be no year filtering If all_years is False
         # and specific_years is a list containing numbers, the results will be filtered for those specific years If
@@ -107,7 +110,15 @@ class Extractor:
             self.wordlist.pop("token")
         self.raw_words = sorted(list(self.wordlist.keys()) + self.wordlist_old)
 
+        # Creating the directories should they not exist already:
+        dir_list = [self.image_download_path, self.metadata_download_path, self.text_directory, self.advert_directory]
+        [self.make_dir(x) for x in dir_list]
+
         # Alright, you're good to go!
+
+    def make_dir(self, dir):
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
     def is_valid(self, url):
         """
@@ -337,6 +348,7 @@ class Extractor:
                 images_info["%d" % (index + 1)] = info
         # create a version of the query without wildcards, because Windows does not like filenames with those characters in it
         query_clean = re.sub("[.*]", "", self.query)
+        self.q_clean = query_clean
         for item in tqdm(images_info.items(), "Downloading images"):
             # for each image, download the versions that the user wants downloaded
             if self.download_cut_out_images:
@@ -591,7 +603,7 @@ class Extractor:
     def extract_information(self):
         # open the input csv and output csv
         with open(self.advert_directory + "img_ocr.csv") as input_file:
-            with open(self.final_directory + "img_ocr_data.csv", "w") as output_file:
+            with open(self.final_directory + "img_ocr_data.csv", "w", encoding="utf-8") as output_file:
                 csv_reader = csv.reader(input_file)
                 csv_writer = csv.writer(output_file)
 
@@ -692,11 +704,6 @@ class Extractor:
                                     self.add_information(row, 29, re.sub(
                                         r"^.*? (((f|ƒ|fr\.|frs\.) )?[0-9]+[¼½¾]?(%| pct.)?( 'sjaars)?)([ .,]+[^ .,]*)*?$",
                                         r"\1", number[0]))
-                                # Is it a date/time?
-                                elif re.search("[0-9] [^ ]+ [12][0-9]{3}", number[0], re.IGNORECASE):
-                                    self.add_information(row, 30,
-                                                         re.sub(r"^.*[^0-9]([0123]?[0-9] [^ ]+ [12][0-9]{3}).*$", r"\1",
-                                                                number[0]))
                                 elif re.search(
                                         "[0-9] (januarij?|februarij?|maart|april|mei|juni|juli|augustus|september|o[ck]tober|november|december)[ ,.]",
                                         number[0], flags=re.IGNORECASE):
@@ -705,12 +712,14 @@ class Extractor:
                                                                 number[0]))
                                 elif re.search("in [12][0-9]{3}", number[0], re.IGNORECASE):
                                     self.add_information(row, 30, re.sub(r"^.*in ([12][0-9]{3}).*$", r"\1", number[0]))
-                                elif re.search("^([^ ]* )*?(nam\. |avonds te |)[0-9]{1,2} uur[ .,]", number[0], re.IGNORECASE):
+                                elif re.search("^([^ ]* )*?(nam\. |avonds te |)[0-9]{1,2} uur[ .,]", number[0],
+                                               re.IGNORECASE):
                                     self.add_information(row, 30,
                                                          re.sub(r"^([^ ]* )*?((nam\. )?[0-9]{1,2} uur)[ .,].*$", r"\2",
                                                                 number[0]))
                                 # Is it a (repayment) period?
-                                elif re.search("(?<!oud) [0-9]+ (jaar|jaren|maanden)(?! oud)", number[0], re.IGNORECASE):
+                                elif re.search("(?<!oud) [0-9]+ (jaar|jaren|maanden)(?! oud)", number[0],
+                                               re.IGNORECASE):
                                     self.add_information(row, 28,
                                                          re.sub(r"^.*[^0-9]([0-9]+ (jaar|jaren|maanden)).*$", r"\1",
                                                                 number[0]))
@@ -726,6 +735,32 @@ class Extractor:
                                                                 number[0]))
                         csv_writer.writerow(row)
 
+    # method to merge all output files by combining meta data csv with the output csv
+    def merge(self):
+        # since the metadata ids are in order we need to try and get the order of the files since this order is how they are
+        # set into the output csv. We will simply take the filenames the same way we do from the info extractor
+        filenames = glob.glob(self.text_directory + "\*.txt")
+        filenames.sort()
+        order = np.array([[int(s) for s in file.split("_") if s.isdigit()]for file in filenames])
+
+        # now we have the order that the items are in the info extract we can attach the meta data to it
+        # to do this we will read both the csv files into dataframes and then merge them
+
+        self.q_clean = "hypothe" #REMOVE ----------------------------------------------------------------------------------------------------------
+
+        meta_file = pd.read_csv(self.metadata_download_path + "%s_metadata.csv" % self.q_clean, encoding="utf-8")
+        info_file = pd.read_csv(self.final_directory + "img_ocr_data.csv", encoding="utf-8")
+        info_file["ID"] = order
+
+        # editing the columns so that they can be merged with no conflicts
+        meta_file = meta_file.rename(columns = {"Result ID": "ID"})
+        info_file = info_file.drop(['Titel', 'Dag', 'DAG', 'Maand', 'MAAND', 'Jaar'], axis = 1)
+        merged = meta_file.merge(info_file, on="ID")
+
+        #writing the final csv
+        merged.to_csv("extraction.csv", encoding="utf-8")
+
+
     # method to run all
     def run(self):
         # run query to image:
@@ -739,6 +774,9 @@ class Extractor:
 
         # run the information extraction
         self.extract_information()
+
+        # merge all output files into one csv
+        self.merge()
 
         print("Extraction complete :)")
 
