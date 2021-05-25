@@ -412,7 +412,7 @@ class Extractor:
 
             # the regular expression used to find the advert
             # TODO look at using the same regular expression used in the queries
-            reg = ".*ypothe+.*"
+            reg = self.query
             # reg = "^.*(" \
             #       "(?= 1e )(?= hypothe)|" \
             #       "(?= 1ste )(?= hypothe)|" \
