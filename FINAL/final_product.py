@@ -49,7 +49,9 @@ class Extractor:
 
         # Customize query
         self.query = "hypothe*"
-        self.q_clean = ""
+        
+        # create a version of the query without wildcards, because Windows does not like filenames with those characters in it
+        self.q_clean = re.sub("[.*]", "", self.query)
 
         # Customize year of appearance If all_years is True, there will be no year filtering If all_years is False
         # and specific_years is a list containing numbers, the results will be filtered for those specific years If
@@ -346,9 +348,8 @@ class Extractor:
             if info:
                 # add url and metadata info to the image info list
                 images_info["%d" % (index + 1)] = info
-        # create a version of the query without wildcards, because Windows does not like filenames with those characters in it
-        query_clean = re.sub("[.*]", "", self.query)
-        self.q_clean = query_clean
+       
+        query_clean = self.q_clean
         for item in tqdm(images_info.items(), "Downloading images"):
             # for each image, download the versions that the user wants downloaded
             if self.download_cut_out_images:
@@ -388,7 +389,7 @@ class Extractor:
     # function to extract the advert from the text
     def extract_advert(self):
 
-        output_file = open(self.advert_directory + "img_ocr.csv", "w")
+        output_file = open(self.advert_directory + "img_ocr.csv", "w", encoding="utf-8")
         csv_writer = csv.writer(output_file)
 
         csv_writer.writerow(
@@ -602,7 +603,7 @@ class Extractor:
     # method for advert to information
     def extract_information(self):
         # open the input csv and output csv
-        with open(self.advert_directory + "img_ocr.csv") as input_file:
+        with open(self.advert_directory + "img_ocr.csv", encoding="utf-8") as input_file:
             with open(self.final_directory + "img_ocr_data.csv", "w", encoding="utf-8") as output_file:
                 csv_reader = csv.reader(input_file)
                 csv_writer = csv.writer(output_file)
