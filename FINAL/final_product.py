@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import time
 import io
+from datetime import datetime
 
 
 # class for extractor
@@ -43,15 +44,21 @@ class Extractor:
         # Final output csv directory location defined
         self.final_directory = "OCR/"
 
+        # Path to Excel file and name of column with URLs
+        # These are only relevant when you're extracting links from an Excel sheet rather than a query
+        self.excel_path = "Excel/OCR List.xlsx"
+        self.name_of_url_column = "URL"
+
         # Download preferences
         self.download_full_images = False
         self.download_cut_out_images = True
 
-        # Customize query
-        self.query = "hypothe*"
-        
-        # create a version of the query without wildcards, because Windows does not like filenames with those characters in it
-        self.q_clean = re.sub("[.*]", "", self.query)
+        # Customize queries
+        # Additional queries can be added by adding a comma and writing a new query between quotation marks
+        self.queries = ["hypothe*","pandbrie*"]
+
+        # Create a date-time string based on the current date and time, which will be used to create unique filenames later on
+        self.date = re.sub(r"^(.*)\..*$",r"\1",str(datetime.now()))
 
         # Customize year of appearance If all_years is True, there will be no year filtering If all_years is False
         # and specific_years is a list containing numbers, the results will be filtered for those specific years If
@@ -133,7 +140,7 @@ class Extractor:
         """
         Returns the image URL on a Delpher result page and the associated metadata
         """
-        soup = bs(requests.get(url).content, "html.parser")
+        soup = bs(requests.get(url,headers={"User-Agent" : "Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0"}).content, "html.parser")
         paper_name = ""
         paper_date = ""
 
@@ -179,7 +186,7 @@ class Extractor:
         if not os.path.isdir(pathname):
             os.makedirs(pathname)
         # download the body of response by chunk, not immediately
-        response = requests.get(url, stream=True)
+        response = requests.get(url, headers={"User-Agent" : "Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0"}, stream=True)
         # get the file name
         filename = os.path.join(pathname, filename)
         # write data read to the file
@@ -187,15 +194,15 @@ class Extractor:
             for data in response.iter_content(1024):
                 f.write(data)
 
-    def create_query_URL(self):
+    def create_query_URL(self,query):
         """
         Create a Delpher search URL based on the search a user wants to make
         """
         php_variables = []
 
         # Add query
-        if self.query:
-            php_variables.append("query=" + self.query)
+        if query:
+            php_variables.append("query=" + query)
 
         # Add year of appearance
         if not self.all_years:
@@ -261,15 +268,15 @@ class Extractor:
 
         return URL
 
-    def get_links_from_query(self):
+    def get_links_from_query(self,query):
         """
         Traverse through the pages listing the results found by Delpher, and collect the links to pages with individual results
         """
 
         # Create search URL
-        url = self.create_query_URL()
+        url = self.create_query_URL(query)
         # Process URL
-        soup = bs(requests.get(url).content, "html.parser")
+        soup = bs(requests.get(url,headers={"User-Agent" : "Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0"}).content, "html.parser")
         # Figure out the number of result pages by checking the total number of results and dividing it by 50
         possible_numbers_of_results = [span.text for span in soup.find_all("span") if
                                        str(span.attrs.get("id")) != "None" and span.attrs.get(
@@ -283,7 +290,7 @@ class Extractor:
         results_links = []
         for page_number in tqdm(range(num_pages), "Gathering results"):
             # Load new page
-            soup = bs(requests.get(url + "&page=%d" % (page_number + 1)).content, "html.parser")
+            soup = bs(requests.get(url + "&page=%d" % (page_number + 1),headers={"User-Agent" : "Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0"}).content, "html.parser")
             # Find links
             for link in soup.find_all("a"):
                 result_url = link.attrs.get("href")
@@ -315,11 +322,11 @@ class Extractor:
                 self.remove_leading_zeroes(date_string[3:5]),
                 date_string[6:10])
 
-    def create_accompanying_csv(self, imgs, query_clean):
+    def create_accompanying_csv(self, imgs, date):
         """
         Write metadata to a file
         """
-        with open(self.metadata_download_path + "%s_metadata.csv" % query_clean, "w") as output_file:
+        with open(self.metadata_download_path + "%s_metadata.csv" % date, "w") as output_file:
             csv_writer = csv.writer(output_file)
             csv_writer.writerow(
                 ["Result ID", "Titel", "Dag", "DAG", "Maand", "MAAND", "Jaar", "URL full", "URL cut out", "keywords"])
@@ -330,44 +337,78 @@ class Extractor:
                      img_data[1][2]])
 
     def run_query_to_image(self):
+        all_links = {}
         images_info = {}
-        # Create a custom query and gather the links associated with the results
-        links = self.get_links_from_query()
+
+        for query in self.queries:
+            # Create custom queries and gather the links associated with the results
+            links = self.get_links_from_query(query)
+            if not links:
+                print("Could not find any results for the query \"%s\"" % query)
+            else:
+                # Let's not assume that the user is okay with downloading 4.000.000 images
+                max_number = input("Found %d articles that matched query \"%s\"! How many do you want to download? (Please type in your answer below and press Enter)\n" % (len(links),query))
+                if int(max_number)  < len(links):
+                    links = links[:int(max_number)]
+                all_links[query] = links
+        for query in all_links.keys():
+            # for each page link, collect the links to the full and cut out versions of the image shown on that page, as well as any corresponding metadata that can be detected
+            for index in tqdm(range(len(all_links[query])), "Collecting image urls and newspaper metatadata for query \"%s\"" % query):
+                info = self.get_image_and_metadata(all_links[query][index])
+                if info:
+                    # add url and metadata info to the image info list
+                    images_info["%d" % (len(images_info) + 1)] = info
+        for item in tqdm(images_info.items(), "Downloading images"):
+            # for each image, download the versions that the user wants downloaded
+            if self.download_cut_out_images:
+                self.download(item[1][0], self.image_download_path, "%s_result_%s_cut_out.jpeg" % (self.date, item[0]))
+            if self.download_full_images:
+                self.download(item[1][1], self.image_download_path, "%s_result_%s_full.jpeg" % (self.date, item[0]))
+        if all_links:
+            # Write the collected metadata to a csv file
+            self.create_accompanying_csv(images_info, self.date)
+
+    def get_links_from_excel(self):
+        """
+        Reads URL fields from the Excel file, starting at field 'start' and stopping right before the field with index 'end' is reached
+        """
+        df = pd.read_excel(self.excel_path)
+        return df[self.name_of_url_column].tolist()
+
+    def run_Excel_links_to_images(self):
+        images_info = {}
+        #Gather links from an Excel sheet
+        links = self.get_links_from_excel()
         if not links:
-            print("Could not find any results :( Did you make a spelling error somewhere?")
+            print("Could not find any results :( Please make sure you defined the path to the Excel file correctly and that the file contains a column called \"%s\"" % (self.name_of_url_column))
             return
-        # Let's not assume that the user is okay with downloading 4.000.000 images
-        max_number = input(
-            "Found %d articles that matched your search query! How many do you want to download? (Please type in your answer below and press Enter)\n" % len(
-                links))
+        #Let's not assume that the user is okay with downlaoding 4000 images
+        max_number = input("Found %d links in the Excel document! How many do you want to want to use to download images? (Please type in your answer below and press Enter)\n" % len(links))
         if int(max_number) < len(links):
             links = links[:int(max_number)]
-        for index in tqdm(range(len(links)), "Collecting image urls and newspaper metadata"):
-            # for each page link, collect the links to the full and cut out versions of the image shown on that page, as well as any corresponding metadata that can be detected
+        for index in tqdm(range(len(links)), "Collecting image data"):
+            # for each image that the user wants to download, collect the links to the full and cut out versions of the image shown on that page, as well as any corresponding metadata that can be detected
             info = self.get_image_and_metadata(links[index])
             if info:
                 # add url and metadata info to the image info list
                 images_info["%d" % (index + 1)] = info
-       
-        query_clean = self.q_clean
+
         for item in tqdm(images_info.items(), "Downloading images"):
             # for each image, download the versions that the user wants downloaded
             if self.download_cut_out_images:
-                self.download(item[1][0], self.image_download_path,
-                              "%s_result_%s_cut_out.jpeg" % (query_clean, item[0]))
+                self.download(item[1][0], self.image_download_path, "%s_result_%s_cut_out.jpeg" % (self.date, item[0]))
             if self.download_full_images:
-                self.download(item[1][1], self.image_download_path, "%s_result_%s_full.jpeg" % (query_clean, item[0]))
+                self.download(item[1][1], self.image_download_path, "%s_result_%s_full.jpeg" % (self.date, item[0]))
         if links:
             # Write the collected metadata to a csv file
-            self.create_accompanying_csv(images_info, query_clean)
-        print("Images Downloaded!")
+            self.create_accompanying_csv(images_info, self.date)
 
     # method for image to text
     def ocr_images(self):
 
         # Going through each of the images in the download folder
-        for image_filename in glob.glob(self.image_download_path + "\*.jpeg"):
-            print("Transcribing image:", image_filename)
+        for image_filename in tqdm(glob.glob(os.path.join(self.image_download_path,"%s*.jpeg") % self.date),"Transcribing images"):
+            #print("Transcribing image:", image_filename)
             try:
                 # ocr the file using tesseract
                 text = pt.image_to_string(Image.open(image_filename), lang='nld')
@@ -388,7 +429,6 @@ class Extractor:
 
     # function to extract the advert from the text
     def extract_advert(self):
-
         output_file = open(self.advert_directory + "img_ocr.csv", "w", encoding="utf-8")
         csv_writer = csv.writer(output_file)
 
@@ -400,73 +440,46 @@ class Extractor:
              "Hypotheek_Opmerking", "URL", "tblResultaatMetadatakey", "OCR"])
 
         # taking all of the filenames from downloaded images and putting them into a list
-        filenames = glob.glob(self.text_directory + "\*.txt")
+        filenames = glob.glob(os.path.join(self.text_directory, "%s*.txt" % (self.date)))
         filenames.sort()
-        for filename in filenames:
-            print("Opening %s..." % (filename))
+
+        # reading a dataframe with result ids and their corresponding queries
+        df = pd.read_csv(os.path.join(self.metadata_download_path,"%s_metadata.csv" % self.date))
+        df = df[["Result ID","keywords"]]
+
+        for filename in tqdm(filenames,"Extracting adverts"):
             with open(filename, "r", encoding="utf-8") as f:
                 text = f.read()
                 f.close()
 
-            # splitting the text of the advert by newline + space as tesseract seems to seperate paragraphs lie this
+            # splitting the text of the advert by newline + space as tesseract seems to seperate paragraphs by this
             text = text.split("\n ")
 
-            # the regular expression used to find the advert
-            # TODO look at using the same regular expression used in the queries
-            reg = self.query
-            # reg = "^.*(" \
-            #       "(?= 1e )(?= hypothe)|" \
-            #       "(?= 1ste )(?= hypothe)|" \
-            #       "(?= a[^ ]*ngebo[^ ]*den )(?= onderpa)|" \
-            #       "(?= b[^ ]*sch[^ ]*kba[^ ]*r )(?= tegen )(?= rente)|" \
-            #       "(?= bil[^ ]*k)(?= rente)|" \
-            #       "(?= Bouwfonds)|" \
-            #       "(?= eerste)(?= hypothe)|" \
-            #       "(?= Eerste)(?= schepenke)|" \
-            #       "(?= genoeg )(?= overwa[^ ]*rde)|" \
-            #       "(?= gevr[^ ]*g)(?= onderpa)|" \
-            #       "(?= gevr[^ ]*g)(?= tegen )(?= rente)|" \
-            #       "(?= gez[^ ]*ht )(?= tegen )(?= rente)|" \
-            #       "(?= gezocht )(?= onderpa)|" \
-            #       "(?= grond[^ ]*red[^ ]*t)|" \
-            #       "(?= hyp. )(?= verban)|" \
-            #       "(?= hypoth)(?= b[^ ]*sch[^ ]*kba[^ ]*r )|" \
-            #       "(?= hypothe[^ ]*b)|" \
-            #       "(?= Hypothe[^ ]*r )(?= verban)|" \
-            #       "(?= Ie )(?= hypothe)|" \
-            #       "(?= Iste )(?= hypothe)|" \
-            #       "(?= le )(?= hypothe)|" \
-            #       "(?= leen )(?= onderpa)|" \
-            #       "(?= leen )(?= tegen )(?= rente)|" \
-            #       "(?= lste )(?= hypothe)|" \
-            #       "(?= mak[^ ]*el[^ ]*r )(?= hypoth)|" \
-            #       "(?= notaris )(?= hypothe)|" \
-            #       "(?= onderpa)(?= aanwe[^ ]*ig )|" \
-            #       "(?= onderpa)(?= overwa[^ ]*rde)|" \
-            #       "(?= Pandbrie)|" \
-            #       "(?= ru[^ ]*me)(?= overwa[^ ]*rde)|" \
-            #       "(?= secuur )(?= onderpa)|" \
-            #       "(?= soli[^ ]*d)(?= onderpa)|" \
-            #       "(?= vold[^ ]*nde)(?= overwa[^ ]*rde)" \
-            #       ").*$"
+            # determining the regular expressions present in the advert based on the result id
+            result_id = re.sub(r"^.*result_([0-9]+)_.*$",r"\1",filename)
+            reg_str = df[df['Result ID'] == int(result_id)].iloc[0]['keywords']
+            reg_str = re.sub("[\[\]]","",reg_str)
+            regs = [reg[1:-1] for reg in reg_str.split(",")]
 
             match = ""
             for i in text:
-                # x = re.search(reg, i.replace("\n", " "))
-                x = re.search(reg, i, re.IGNORECASE)
-                if x:
-                    match += i
-            if match == "":
-                print("match empty, improving spelling for better match?")
-                for i in text:
-                    i = self.improve_spelling(i)
-                    # x = re.search(reg, i.replace("\n", " "))
+                for reg in regs:
                     x = re.search(reg, i, re.IGNORECASE)
                     if x:
-                        print("match found in improved spelling")
                         match += i
+                        break
+            if match == "":
+                #print("match empty, improving spelling for better match?")
+                for i in text:
+                    i = self.improve_spelling(i)
+                    for reg in regs:
+                        x = re.search(reg, i, re.IGNORECASE)
+                        if x:
+                            #print("match found in improved spelling")
+                            match += i
+                            break
             else:
-                print("match not empty")
+                #print("match not empty")
                 match = self.improve_spelling(match)
 
             # writing the match into the csv for the adverts
@@ -609,7 +622,7 @@ class Extractor:
                 csv_writer = csv.writer(output_file)
 
                 # check the ocr from each row for indications of certain information
-                for row in csv_reader:
+                for row in tqdm(csv_reader,"Extracting information"):
                     if len(row) > 34:
                         if row[34] != "OCR":
                             ocr = row[34]
@@ -740,13 +753,13 @@ class Extractor:
     def merge(self):
         # since the metadata ids are in order we need to try and get the order of the files since this order is how they are
         # set into the output csv. We will simply take the filenames the same way we do from the info extractor
-        filenames = glob.glob(self.text_directory + "\*.txt")
+        filenames = glob.glob(os.path.join(self.text_directory, "%s*.txt" % self.date))
         filenames.sort()
         order = np.array([[int(s) for s in file.split("_") if s.isdigit()]for file in filenames])
 
         # now we have the order that the items are in the info extract we can attach the meta data to it
         # to do this we will read both the csv files into dataframes and then merge them
-        meta_file = pd.read_csv(self.metadata_download_path + "%s_metadata.csv" % self.q_clean, encoding="utf-8")
+        meta_file = pd.read_csv(self.metadata_download_path + "%s_metadata.csv" % self.date, encoding="utf-8")
         info_file = pd.read_csv(self.final_directory + "img_ocr_data.csv", encoding="utf-8")
         info_file["ID"] = order
 
@@ -761,8 +774,11 @@ class Extractor:
 
     # method to run all
     def run(self):
-        # run query to image:
-        self.run_query_to_image()
+        # choose between the following two modules, by putting a hashtag (#) in front of the one you DON'T want to use
+        # 1 (run_query_to_image): returns images based on a query
+        # 2 (run_Excel_links_to_images): returns images based on links from the Excel sheet
+        #self.run_query_to_image()
+        self.run_Excel_links_to_images()
 
         # run image to text
         self.ocr_images()
