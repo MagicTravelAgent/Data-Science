@@ -18,8 +18,6 @@ import os
 import automata
 import numpy as np
 import pandas as pd
-import time
-import io
 from datetime import datetime
 
 
@@ -46,7 +44,7 @@ class Extractor:
 
         # Path to Excel file and name of column with URLs
         # These are only relevant when you're extracting links from an Excel sheet rather than a query
-        self.excel_path = "Excel/OCR List.xlsx"
+        self.excel_path = os.path.join("Excel","OCR List.xlsx")
         self.name_of_url_column = "URL"
 
         # Download preferences
@@ -383,9 +381,13 @@ class Extractor:
             print("Could not find any results :( Please make sure you defined the path to the Excel file correctly and that the file contains a column called \"%s\"" % (self.name_of_url_column))
             return
         #Let's not assume that the user is okay with downlaoding 4000 images
-        max_number = input("Found %d links in the Excel document! How many do you want to want to use to download images? (Please type in your answer below and press Enter)\n" % len(links))
-        if int(max_number) < len(links):
-            links = links[:int(max_number)]
+        start_number = input("Found %d links in the Excel document! On which row do you want me to start downloading? (Please type in a number between %d and %d below and press Enter)\n" % (len(links),min(1,len(links)),len(links)))
+        if int(start_number) > len(links):
+            quit()
+        end_number = input("On which row do you want me to stop downloading? (Please type in a number between %s and %d and press Enter)\n" % (start_number, len(links)))
+        if int(end_number) < 1 or int(end_number) < int(start_number):
+            quit()
+        links = links[int(start_number):int(end_number) + 1]
         for index in tqdm(range(len(links)), "Collecting image data"):
             # for each image that the user wants to download, collect the links to the full and cut out versions of the image shown on that page, as well as any corresponding metadata that can be detected
             info = self.get_image_and_metadata(links[index])
