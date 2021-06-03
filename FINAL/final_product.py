@@ -56,7 +56,7 @@ class Extractor:
         self.queries = ["hypothe*","pandbrie*"]
 
         # Create a date-time string based on the current date and time, which will be used to create unique filenames later on
-        self.date = re.sub(r"^(.*)\..*$",r"\1",str(datetime.now()))
+        self.date = re.sub(":",";",re.sub(r"^(.*)\..*$",r"\1",str(datetime.now())))
 
         # Customize year of appearance If all_years is True, there will be no year filtering If all_years is False
         # and specific_years is a list containing numbers, the results will be filtered for those specific years If
